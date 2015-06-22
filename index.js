@@ -75,7 +75,7 @@ var leave = function(port, swarm) {
 	delete pools[port];
 };
 
-var join = function(port, swarm) {
+var join = function(port, host, swarm) {
 	var pool = pools[port];
 
 	if (!pool) {
@@ -94,7 +94,13 @@ var join = function(port, swarm) {
 		if (swarm.utp) servers.push(utp.createServer(onconnection));
 
 		var loop = function(i) {
-			if (i < servers.length) return servers[i].listen(port, loop.bind(null, i+1))
+			if (i < servers.length) {
+				if ((swarm.utp && i === servers.length - 1) || !host) {
+					return servers[i].listen(port, loop.bind(null, i + 1));
+				} else {
+					return servers[i].listen(port, host, loop.bind(null, i + 1));
+				}
+			}
 			pool.listening = true;
 			Object.keys(swarms).forEach(function(infoHash) {
 				swarms[infoHash].emit('listening');
@@ -219,10 +225,11 @@ Swarm.prototype.remove = function(addr) {
 	this._drain();
 };
 
-Swarm.prototype.listen = function(port, onlistening) {
+Swarm.prototype.listen = function(port, host, onlistening) {
+	if (typeof host === 'function') return this.listen(port, undefined, host);
 	if (onlistening) this.once('listening', onlistening);
 	this.port = port;
-	join(this.port, this);
+	join(this.port, host, this);
 };
 
 Swarm.prototype.destroy = function() {

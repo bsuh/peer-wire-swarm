@@ -240,6 +240,10 @@ Swarm.prototype.destroy = function() {
 		self._remove(addr);
 	});
 
+	this.wires.forEach(function (wire) {
+		wire.destroy();
+	});
+
 	leave(this.port, this);
 	process.nextTick(function() {
 		self.emit('close');
